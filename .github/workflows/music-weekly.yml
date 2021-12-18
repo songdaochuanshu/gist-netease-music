@@ -1,0 +1,22 @@
+name:  Music Weekly
+on:
+  push:
+    branches:
+      - master
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  update-gist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: "🐱‍💻 Install NPM dependencies"
+        run: npm install
+      - name: "📅 Update Music Weekly"
+        run: node index.js
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GIST_ID: ${{ secrets.GIST_ID }}
+          USER_ID: ${{ github.USER_ID }}
+          USER_TOKEN: ${{ secrets.USER_TOKEN }}
