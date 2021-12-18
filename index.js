@@ -9,7 +9,7 @@ const {
   USER_TOKEN: userToken,
 } = process.env;
 
-(async () => {
+(async function () {
   /**
    * First, get user record
    */
