@@ -1,22 +1,44 @@
-name:  Music Weekly
+name: Music Weekly
+
 on:
   push:
     branches:
       - main
   schedule:
-    - cron: "0 0 * * *"
+    - cron: "0 0 * * *"  # 每天午夜执行
 
 jobs:
   update-gist:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v2
-      - name: "🐱‍💻 Install NPM dependencies"
-        run: npm install
-      - name: "📅 Update Music Weekly"
+      - name: Checkout code
+        uses: actions/checkout@v3  # 使用最新版本
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'  # 根据需要选择合适的 Node.js 版本
+
+      - name: Cache NPM dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install NPM dependencies
+        run: npm ci  # 使用 npm ci 而不是 npm install 以确保一致性
+
+      - name: Update Music Weekly
         run: node index.js
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           GIST_ID: ${{ secrets.GIST_ID }}
           USER_ID: ${{ secrets.USER_ID }}
           USER_TOKEN: ${{ secrets.USER_TOKEN }}
+
+      - name: Debug Output
+        if: failure()
+        run: echo "An error occurred while updating the Gist."
