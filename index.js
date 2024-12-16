@@ -59,4 +59,7 @@
 
         console.log('Gist updated successfully.');
     } catch (error) {
-        console.error(`Error occurred: ${error.message}`); 
+        console.error(`Error occurred: ${error.message}`);
+        console.error(error);
+    }
+})();
