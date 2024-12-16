@@ -20,16 +20,8 @@ jobs:
         with:
           node-version: '18'  # 根据需要选择合适的 Node.js 版本
 
-      - name: Cache NPM dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
       - name: Install NPM dependencies
-        run: npm ci  # 使用 npm ci 而不是 npm install 以确保一致性
+        run: npm install  
 
       - name: Update Music Weekly
         run: node index.js
