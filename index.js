@@ -1,19 +1,3 @@
-require('dotenv').config();
-const { Octokit } = require('@octokit/rest');
-const { user_record } = require('NeteaseCloudMusicApi');
-
-// 检查必要的环境变量
-if (!process.env.GIST_ID || !process.env.GH_TOKEN || !process.env.USER_ID || !process.env.USER_TOKEN) {
-    throw new Error('Missing required environment variables.');
-}
-
-const {
-    GIST_ID: gistId,
-    GH_TOKEN: githubToken,
-    USER_ID: userId,
-    USER_TOKEN: userToken,
-} = process.env;
-
 (async function () {
     try {
         /**
@@ -24,15 +8,22 @@ const {
             uid: userId,
             type: 1, // last week
         });
-        
+
         if (!recordResponse.body || !Array.isArray(recordResponse.body.weekData)) {
             console.error('Invalid response from user_record API');
             return;
         }
 
         const { weekData } = recordResponse.body;
+
+        // 日志输出原始数据
+        console.log('Raw week data:', weekData);
+
+        // 过滤掉 playCount 为 0 的项目
+        const validWeekData = weekData.filter(data => data.playCount > 0);
+
         let totalPlayCount = 0;
-        weekData.forEach(data => {
+        validWeekData.forEach(data => {
             totalPlayCount += data.playCount;
         });
 
@@ -41,7 +32,7 @@ const {
         /**
          * 构建歌曲/播放次数图表
          */
-        const lines = weekData.slice(0, 5).map((data, index) => {
+        const lines = validWeekData.slice(0, 5).map((data, index) => {
             const playCount = data.playCount;
             const artists = data.song.ar.map(a => a.name).join('/');
             const name = `${data.song.name} - ${artists}`;
@@ -68,7 +59,4 @@ const {
 
         console.log('Gist updated successfully.');
     } catch (error) {
-        console.error(`Error occurred: ${error.message}`);
-        console.error(error);
-    }
-})();
+        console.error(`Error occurred: ${error.message}`); 
