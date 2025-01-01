@@ -2,73 +2,71 @@ require('dotenv').config();
 const { Octokit } = require('@octokit/rest');
 const { user_record } = require('NeteaseCloudMusicApi');
 
-// 检查必要的环境变量
-if (!process.env.GIST_ID || !process.env.GH_TOKEN || !process.env.USER_ID || !process.env.USER_TOKEN) {
-    throw new Error('Missing required environment variables.');
-}
-
 const {
-    GIST_ID: gistId,
-    GH_TOKEN: githubToken,
-    USER_ID: userId,
-    USER_TOKEN: userToken,
+  GIST_ID: gistId,
+  GH_TOKEN: githubToken,
+  USER_ID: userId,
+  USER_TOKEN: userToken,
 } = process.env;
 
-(async function () {
-    try {
-        /**
-         * 获取用户播放记录
-         */
-        const recordResponse = await user_record({
-            cookie: `MUSIC_U=${userToken}`,
-            uid: userId,
-            type: 1, // last week
-        });
-        
-        if (!recordResponse.body || !Array.isArray(recordResponse.body.weekData)) {
-            console.error('Invalid response from user_record API');
-            return;
-        }
+if (!gistId || !githubToken || !userId || !userToken) {
+  console.error('Missing required environment variables.');
+  process.exit(1);
+}
 
-        const { weekData } = recordResponse.body;
-        let totalPlayCount = 0;
-        weekData.forEach(data => {
-            totalPlayCount += data.playCount;
-        });
+async function getUserRecord() {
+  try {
+    const record = await user_record({
+      cookie: `MUSIC_U=${userToken}`,
+      uid: userId,
+      type: 1, // last week
+    });
+    return record.body.weekData;
+  } catch (error) {
+    console.error(`Unable to get user record \n${error}`);
+    throw error;
+  }
+}
 
-        const icons = ['🥇', '🥈', '🥉', '', ''];
+function formatWeekData(weekData) {
+  const icon = ['🥇', '🥈', '🥉', '', ''];
+  return weekData.slice(0, 5).map((data, index) => {
+    const playCount = data.playCount;
+    const artists = data.song.ar.map(a => a.name).join('/');
+    const name = `${data.song.name} - ${artists}`;
+    return `${icon[index].padEnd(2)}${name} · ${playCount} plays`;
+  }).join('\n');
+}
 
-        /**
-         * 构建歌曲/播放次数图表
-         */
-        const lines = weekData.slice(0, 5).map((data, index) => {
-            const playCount = data.playCount;
-            const artists = data.song.ar.map(a => a.name).join('/');
-            const name = `${data.song.name} - ${artists}`;
-            const icon = index < icons.length ? icons[index].padEnd(2) : '';
+async function updateGist(content) {
+  try {
+    const octokit = new Octokit({ auth: `token ${githubToken}` });
+    const gist = await octokit.gists.get({ gist_id: gistId });
+    const filename = Object.keys(gist.data.files)[0];
+    await octokit.gists.update({
+      gist_id: gistId,
+      files: {
+        [filename]: {
+          filename: `🎵 My last week in music`,
+          content: content,
+        },
+      },
+    });
+    console.log('Gist updated successfully.');
+  } catch (error) {
+    console.error(`Unable to update gist\n${error}`);
+  }
+}
 
-            return `${icon}${name} · ${playCount} plays`;
-        }).join('\n');
-
-        /**
-         * 更新 Gist
-         */
-        const octokit = new Octokit({ auth: githubToken });
-        const gist = await octokit.gists.get({ gist_id: gistId });
-        const filename = Object.keys(gist.data.files)[0];
-
-        await octokit.gists.update({
-            gist_id: gistId,
-            files: {
-                [filename]: {
-                    content: lines,
-                },
-            },
-        });
-
-        console.log('Gist updated successfully.');
-    } catch (error) {
-        console.error(`Error occurred: ${error.message}`);
-        console.error(error);
-    }
+(async () => {
+  try {
+    const weekData = await getUserRecord();
+    const formattedData = formatWeekData(weekData);
+    await updateGist(formattedData);
+  } catch (error) {
+    console.error('An error occurred during the process:', error);
+  }
 })();
+
+
+
